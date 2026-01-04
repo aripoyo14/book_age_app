@@ -126,13 +126,15 @@ def aggregate_statistics(df_with_age):
 def generate_article_with_gemini(stats, writing_style="標準的", user_insights=""):
     """Gemini APIを使って年齢別書籍数の考察記事を生成"""
     try:
-        # APIキーの取得
-        if "gemini_api_key" in st.secrets:
+        # APIキーの取得（secrets.tomlから取得）
+        if "GEMINI_API_KEY" in st.secrets:
+            api_key = st.secrets["GEMINI_API_KEY"]["GEMINI_API_KEY"]
+        elif "gemini_api_key" in st.secrets:
             api_key = st.secrets["gemini_api_key"]
         elif "GEMINI_API_KEY" in os.environ:
             api_key = os.environ["GEMINI_API_KEY"]
         else:
-            return None, "Gemini APIキーが見つかりません。secrets.tomlに'gemini_api_key'を設定するか、環境変数'GEMINI_API_KEY'を設定してください。"
+            return None, "Gemini APIキーが見つかりません。secrets.tomlに'[GEMINI_API_KEY]'セクションを設定するか、環境変数'GEMINI_API_KEY'を設定してください。"
         
         # Gemini APIの設定
         genai.configure(api_key=api_key)
