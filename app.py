@@ -387,6 +387,58 @@ if not df.empty:
                         st.info("発行日から年代を抽出できた書籍がありません。")
                 else:
                     st.warning(f"発行日列（{COL_PUBLISH_DATE}）が見つかりません。")
+                
+                # --- 年齢を選択して書籍を表示 ---
+                st.subheader("🔍 年齢で書籍を探す")
+                
+                # 年齢の範囲を取得
+                min_age = int(df_with_age["対象年齢"].min())
+                max_age = int(df_with_age["対象年齢"].max())
+                
+                # スライダーで年齢を選択
+                selected_age = st.slider(
+                    "対象年齢を選択してください",
+                    min_value=min_age,
+                    max_value=max_age,
+                    value=min_age,
+                    help="スライダーを動かして、表示したい対象年齢を選択してください"
+                )
+                
+                # 選択された年齢でフィルタリング
+                filtered_df = df_with_age[df_with_age["対象年齢"] == selected_age].copy()
+                
+                st.write(f"**{selected_age}歳向けの書籍: {len(filtered_df)} 冊**")
+                
+                # 表示する列を準備
+                display_columns = []
+                for col in [COL_TITLE, COL_PUBLISH_DATE, COL_AUTHOR]:
+                    if col in filtered_df.columns:
+                        display_columns.append(col)
+                
+                if len(display_columns) > 0 and len(filtered_df) > 0:
+                    # テーブル表示（ソート処理）
+                    display_df = filtered_df[display_columns].copy()
+                    
+                    # 発行日でソート（文字列として扱う）
+                    if COL_PUBLISH_DATE in display_columns:
+                        try:
+                            # 発行日を数値に変換してソートを試みる
+                            display_df[COL_PUBLISH_DATE + "_num"] = pd.to_numeric(display_df[COL_PUBLISH_DATE], errors='coerce')
+                            display_df = display_df.sort_values(COL_PUBLISH_DATE + "_num", ascending=False, na_position='last')
+                            display_df = display_df.drop(columns=[COL_PUBLISH_DATE + "_num"])
+                        except:
+                            # 数値変換に失敗した場合は文字列としてソート
+                            display_df = display_df.sort_values(COL_PUBLISH_DATE, ascending=False, na_position='last')
+                    
+                    st.dataframe(
+                        display_df,
+                        hide_index=True,
+                        use_container_width=True
+                    )
+                elif len(filtered_df) == 0:
+                    st.info(f"{selected_age}歳向けの書籍が見つかりませんでした。")
+                else:
+                    st.error("表示する列が見つかりません。列名を確認してください。")
             else:
                 st.warning("年齢データを抽出できた書籍がありません。タイトルに年齢情報が含まれているか確認してください。")
         else:
