@@ -1,0 +1,11 @@
+streamlit
+pandas
+requests
+kanjize
+gspread
+oauth2client
+jupyter
+ipykernel
+google-generativeai
+altair
+python-dotenv
