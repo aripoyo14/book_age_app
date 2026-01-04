@@ -72,3 +72,5 @@ htmlcov/
 .dmypy.json
 dmypy.json
 
+# その他
+/qiita
