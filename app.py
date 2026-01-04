@@ -129,16 +129,23 @@ def generate_article_with_gemini(stats, writing_style="標準的", user_insights
         # APIキーの取得（secrets.tomlから取得）
         api_key = None
         
-        # パターン1: [GEMINI_API_KEY]セクション内のGEMINI_API_KEYキー
+        # パターン1: [GEMINI_API_KEY]セクション内のGEMINI_API_KEYキー（gcp_service_accountと同じパターン）
+        # Streamlit Cloudでは、セクション名とキー名が同じ場合でも、セクション全体が辞書として返される
         if "GEMINI_API_KEY" in st.secrets:
             gemini_section = st.secrets["GEMINI_API_KEY"]
-            if isinstance(gemini_section, dict) and "GEMINI_API_KEY" in gemini_section:
-                api_key = gemini_section["GEMINI_API_KEY"]
+            # セクションが辞書の場合（[GEMINI_API_KEY]セクション内にキーがある場合）
+            if isinstance(gemini_section, dict):
+                # セクション内のGEMINI_API_KEYキーを取得
+                if "GEMINI_API_KEY" in gemini_section:
+                    api_key = gemini_section["GEMINI_API_KEY"]
+                # セクション内の最初のキーの値を取得（セクション名とキー名が同じ場合のフォールバック）
+                elif len(gemini_section) > 0:
+                    api_key = list(gemini_section.values())[0]
+            # セクションが文字列の場合（トップレベルに直接設定されている場合）
             elif isinstance(gemini_section, str):
-                # セクション自体が文字列の場合（直接キーとして設定されている場合）
                 api_key = gemini_section
         
-        # パターン2: フラットなキーとして設定されている場合
+        # パターン2: フラットなキーとして設定されている場合（小文字）
         if not api_key and "gemini_api_key" in st.secrets:
             api_key = st.secrets["gemini_api_key"]
         
@@ -148,7 +155,7 @@ def generate_article_with_gemini(stats, writing_style="標準的", user_insights
         
         # APIキーが見つからない場合
         if not api_key:
-            return None, "Gemini APIキーが見つかりません。Streamlit CloudのSecretsに'[GEMINI_API_KEY]'セクションと'GEMINI_API_KEY'キーを設定するか、環境変数'GEMINI_API_KEY'を設定してください。"
+            return None, "Gemini APIキーが見つかりません。Streamlit CloudのSecretsに'[GEMINI_API_KEY]'セクション内に'GEMINI_API_KEY = \"YOUR_API_KEY\"'を設定するか、トップレベルで'GEMINI_API_KEY = \"YOUR_API_KEY\"'を設定してください。"
         
         # Gemini APIの設定
         genai.configure(api_key=api_key)
