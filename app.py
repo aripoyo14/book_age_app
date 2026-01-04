@@ -129,33 +129,36 @@ def generate_article_with_gemini(stats, writing_style="標準的", user_insights
         # APIキーの取得（secrets.tomlから取得）
         api_key = None
         
-        # パターン1: [GEMINI_API_KEY]セクション内のGEMINI_API_KEYキー（gcp_service_accountと同じパターン）
-        # Streamlit Cloudでは、セクション名とキー名が同じ場合でも、セクション全体が辞書として返される
-        if "GEMINI_API_KEY" in st.secrets:
+        # パターン1: [gemini]セクション内のapi_keyキー（gcp_service_accountと同じパターン）
+        if "gemini" in st.secrets:
+            gemini_section = st.secrets["gemini"]
+            if isinstance(gemini_section, dict) and "api_key" in gemini_section:
+                api_key = gemini_section["api_key"]
+        
+        # パターン2: 後方互換性のため、[GEMINI_API_KEY]セクションもチェック
+        if not api_key and "GEMINI_API_KEY" in st.secrets:
             gemini_section = st.secrets["GEMINI_API_KEY"]
-            # セクションが辞書の場合（[GEMINI_API_KEY]セクション内にキーがある場合）
-            if isinstance(gemini_section, dict):
-                # セクション内のGEMINI_API_KEYキーを取得
-                if "GEMINI_API_KEY" in gemini_section:
-                    api_key = gemini_section["GEMINI_API_KEY"]
-                # セクション内の最初のキーの値を取得（セクション名とキー名が同じ場合のフォールバック）
-                elif len(gemini_section) > 0:
-                    api_key = list(gemini_section.values())[0]
-            # セクションが文字列の場合（トップレベルに直接設定されている場合）
+            if isinstance(gemini_section, dict) and "GEMINI_API_KEY" in gemini_section:
+                api_key = gemini_section["GEMINI_API_KEY"]
             elif isinstance(gemini_section, str):
                 api_key = gemini_section
         
-        # パターン2: フラットなキーとして設定されている場合（小文字）
+        # パターン3: トップレベルに直接設定されている場合
+        if not api_key and "GEMINI_API_KEY" in st.secrets:
+            if isinstance(st.secrets["GEMINI_API_KEY"], str):
+                api_key = st.secrets["GEMINI_API_KEY"]
+        
+        # パターン4: フラットなキーとして設定されている場合（小文字）
         if not api_key and "gemini_api_key" in st.secrets:
             api_key = st.secrets["gemini_api_key"]
         
-        # パターン3: 環境変数から取得
+        # パターン5: 環境変数から取得
         if not api_key and "GEMINI_API_KEY" in os.environ:
             api_key = os.environ["GEMINI_API_KEY"]
         
         # APIキーが見つからない場合
         if not api_key:
-            return None, "Gemini APIキーが見つかりません。Streamlit CloudのSecretsに'[GEMINI_API_KEY]'セクション内に'GEMINI_API_KEY = \"YOUR_API_KEY\"'を設定するか、トップレベルで'GEMINI_API_KEY = \"YOUR_API_KEY\"'を設定してください。"
+            return None, "Gemini APIキーが見つかりません。Streamlit CloudのSecretsに'[gemini]'セクション内に'api_key = \"YOUR_API_KEY\"'を設定してください。"
         
         # Gemini APIの設定
         genai.configure(api_key=api_key)
