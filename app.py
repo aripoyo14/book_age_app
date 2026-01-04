@@ -127,26 +127,34 @@ def generate_article_with_gemini(stats, writing_style="標準的", user_insights
     """Gemini APIを使って年齢別書籍数の考察記事を生成"""
     try:
         # APIキーの取得（secrets.tomlから取得）
+        # gcp_service_accountと同じパターンで取得
         api_key = None
         
         # パターン1: [gemini]セクション内のapi_keyキー（gcp_service_accountと同じパターン）
         if "gemini" in st.secrets:
-            gemini_section = st.secrets["gemini"]
-            if isinstance(gemini_section, dict) and "api_key" in gemini_section:
-                api_key = gemini_section["api_key"]
+            try:
+                gemini_dict = dict(st.secrets["gemini"])
+                if "api_key" in gemini_dict:
+                    api_key = gemini_dict["api_key"]
+            except (TypeError, AttributeError):
+                # 辞書に変換できない場合（文字列の場合など）
+                if isinstance(st.secrets["gemini"], str):
+                    api_key = st.secrets["gemini"]
         
-        # パターン2: 後方互換性のため、[GEMINI_API_KEY]セクションもチェック
-        if not api_key and "GEMINI_API_KEY" in st.secrets:
-            gemini_section = st.secrets["GEMINI_API_KEY"]
-            if isinstance(gemini_section, dict) and "GEMINI_API_KEY" in gemini_section:
-                api_key = gemini_section["GEMINI_API_KEY"]
-            elif isinstance(gemini_section, str):
-                api_key = gemini_section
-        
-        # パターン3: トップレベルに直接設定されている場合
+        # パターン2: トップレベルに直接設定されている場合（Streamlit Cloudで最も確実）
         if not api_key and "GEMINI_API_KEY" in st.secrets:
             if isinstance(st.secrets["GEMINI_API_KEY"], str):
                 api_key = st.secrets["GEMINI_API_KEY"]
+        
+        # パターン3: 後方互換性のため、[GEMINI_API_KEY]セクションもチェック
+        if not api_key and "GEMINI_API_KEY" in st.secrets:
+            try:
+                gemini_section = st.secrets["GEMINI_API_KEY"]
+                if isinstance(gemini_section, dict):
+                    if "GEMINI_API_KEY" in gemini_section:
+                        api_key = gemini_section["GEMINI_API_KEY"]
+            except (TypeError, AttributeError):
+                pass
         
         # パターン4: フラットなキーとして設定されている場合（小文字）
         if not api_key and "gemini_api_key" in st.secrets:
@@ -158,7 +166,9 @@ def generate_article_with_gemini(stats, writing_style="標準的", user_insights
         
         # APIキーが見つからない場合
         if not api_key:
-            return None, "Gemini APIキーが見つかりません。Streamlit CloudのSecretsに'[gemini]'セクション内に'api_key = \"YOUR_API_KEY\"'を設定してください。"
+            # デバッグ情報を含めたエラーメッセージ
+            available_keys = list(st.secrets.keys()) if hasattr(st.secrets, 'keys') else []
+            return None, f"Gemini APIキーが見つかりません。Streamlit CloudのSecretsに'[gemini]'セクション内に'api_key = \"YOUR_API_KEY\"'を設定するか、トップレベルで'GEMINI_API_KEY = \"YOUR_API_KEY\"'を設定してください。利用可能なキー: {available_keys}"
         
         # Gemini APIの設定
         genai.configure(api_key=api_key)
